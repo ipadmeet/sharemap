@@ -297,7 +297,7 @@ const map = L.map('map', {
 
 // 画像の読み込みとサイズに合わせた座標設定
 // ※アップロードした画像「逃走中.jpg」を同じフォルダ内に保存、もしくは適切なURLに設定してください
-const imageUrl = '逃走中.jpg'; 
+const imageUrl = '逃走中.PNG'; 
 const imageBounds = [[0, 0], [1000, 750]]; // [y(縦幅), x(横幅)] の仮想範囲を規定
 
 // 画像オーバーレイを地図に追加
@@ -362,7 +362,7 @@ function resizeImage(file) {
         canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        const base64 = canvas.toDataURL("image/PNG", 0.7);
         resolve(base64);
       };
       img.src = e.target.result;
