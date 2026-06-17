@@ -287,12 +287,15 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // 🗺️ 背景にオリジナル地図（画像）を設定するためのLeaflet初期化
+// 画像を完全に固定するため、各種ズームやドラッグ操作をすべて無効化（false）に設定
 const map = L.map('map', {
-  zoomControl: false,
-  crs: L.CRS.Simple,
-  minZoom: -3,       // 画面全体が収まるようにズームアウトの下限を少し広げました
-  maxZoom: 3,
-  maxBoundsViscosity: 1.0 // 画像の外側に行き過ぎないように固定
+  zoomControl: false,       // 👈 元々あった拡大縮小ボタン（コントロール）を非表示
+  dragging: false,          // 👈 ドラッグでのマップ移動を禁止
+  touchZoom: false,         // 👈 スマホ等のピンチイン・アウトによるズームを禁止
+  scrollWheelZoom: false,   // 👈 マウスホイールによるズームを禁止
+  doubleClickZoom: false,   // 👈 ダブルクリックによるズームを禁止
+  boxZoom: false,           // 👈 Shift+ドラッグによるズームを禁止
+  crs: L.CRS.Simple
 });
 
 const imageUrl = '逃走中1.PNG'; 
@@ -310,14 +313,10 @@ img.onload = function() {
   // 画像オーバーレイを地図に追加
   L.imageOverlay(imageUrl, imageBounds).addTo(map);
 
-  // マップが移動できる最大範囲を画像のサイズに制限（全画面からはみ出さない処理）
-  map.setMaxBounds(imageBounds);
-
   // 最初から全画面にぴったり収まるようにフィットさせる
   map.fitBounds(imageBounds);
   
-  // ズームコントロールを配置
-  L.control.zoom({ position: 'topright' }).addTo(map);
+  // 💡 ここにあった L.control.zoom（拡大縮小ボタン）の追加コードを削除しました
 };
 
 let addMode = false;
