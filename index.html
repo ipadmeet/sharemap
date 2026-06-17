@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>共有マップ</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<style>
+  body { margin: 0; }
+
+  #map { height: 100vh; background: #f0f0f0; }
+
+  .controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .text-input {
+    width: 150px;
+  }
+  
+  .desc-btn {
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .desc-btn:hover {
+    background-color: #e2e6ea;
+  }
+  
+  .file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+  }
+  
+  .file-input-wrapper input[type=file] {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  
+  .file-custom-btn {
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    display: inline-block;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  
+  .file-custom-btn:hover {
+    background-color: #e2e6ea;
+  }
+
+  .add-btn {
+    width: 140px;
+    white-space: nowrap;
+  }
+
+  /* 💡 独自画像マップ化に伴い、不要になった郵便番号検索は非表示にしています */
+  .zip-container {
+    display: none;
+  }
+
+  .custom-popup img {
+    width: 120px;
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+
+  .popup-desc {
+    font-size: 13px;
+    color: #555;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+
+  .popup-desc a {
+    color: #007bff;
+    text-decoration: underline;
+  }
+  .popup-desc a:hover {
+    color: #0056b3;
+  }
+  
+  .delete-btn {
+    margin-top: 8px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .confirm-box {
+    margin-top: 5px;
+    background: #fff3f3;
+    padding: 5px;
+    border: 1px solid #ffcccc;
+    border-radius: 4px;
+    text-align: center;
+  }
+  
+  .yes-btn {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 2px 8px;
+    margin-right: 5px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  
+  .no-btn {
+    background-color: #f0ad4e;
+    color: white;
+    border: none;
+    padding: 2px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .custom-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .custom-modal {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 280px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .custom-modal h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #333;
+  }
+
+  .custom-modal textarea {
+    width: 100%;
+    height: 100px;
+    resize: none;
+    box-sizing: border-box;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .modal-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .modal-ok { background-color: #007bff; color: white; }
+  .modal-ok:hover { background-color: #0056b3; }
+  .modal-cancel { background-color: #6c757d; color: white; }
+  .modal-cancel:hover { background-color: #5a6268; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <div class="row">
+    <input type="text" id="text" class="text-input" placeholder="名称">
+    <button class="desc-btn" id="desc-btn" onclick="openDescModal()">説明を追加</button>
+    
+    <div class="file-input-wrapper">
+      <div class="file-custom-btn" id="file-label">画像を選択</div>
+      <input type="file" id="image" accept="image/*" onchange="updateFileLabel()">
+    </div>
+  </div>
+  
+  <div class="row">
+    <button class="add-btn" onclick="enableAdd()">マーカー追加モード</button>
+  </div>
+</div>
+
+<div class="custom-modal-overlay" id="desc-modal">
+  <div class="custom-modal">
+    <h3>この場所の説明を入力</h3>
+    <textarea id="modal-textarea" placeholder="説明やURL（https://...）を入力してください..."></textarea>
+    <div class="modal-buttons">
+      <button class="modal-btn modal-cancel" onclick="closeDescModal(false)">キャンセル</button>
+      <button class="modal-btn modal-ok" onclick="closeDescModal(true)">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+document.addEventListener('contextmenu', e => {
+  if (e.target && e.target.id === 'modal-textarea') return;
+  e.preventDefault();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target && e.target.id === 'modal-textarea') {
+    if (e.key === 'v' || e.key === 'c' || e.key === 'a' || e.key === 'x' || e.key === 'z') {
+      return; 
+    }
+  }
+  if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) || ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u'))) {
+    e.preventDefault();
+  }
+});
+
+document.getElementById('modal-textarea').addEventListener('paste', function(e) {
+  e.stopPropagation();
+});
+
+let myUserId = localStorage.getItem('map_user_id');
+if (!myUserId) {
+  myUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+  localStorage.setItem('map_user_id', myUserId);
+}
+
+// 🔥 Firebase設定
+const firebaseConfig = {
+  apiKey: "AIzaSyAguJ8B6ILRpYUXLc2H2hKYRAsKktfKerI",
+  authDomain: "kunimap-3c5f6.firebaseapp.com",
+  projectId: "kunimap-3c5f6",
+  storageBucket: "kunimap-3c5f6.firebasestorage.app",
+  messagingSenderId: "262185437500",
+  appId: "1:262185437500:web:7768f16679009037a93639"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 🗺️ 背景にオリジナル地図（画像）を設定するためのLeaflet初期化
+// CRSをSimpleに設定し、1ピクセル＝1単位の仮想平面座標系に変更します
+const map = L.map('map', {
+  zoomControl: false,
+  crs: L.CRS.Simple,
+  minZoom: -2,
+  maxZoom: 2
+});
+
+// 画像の読み込みとサイズに合わせた座標設定
+// ※アップロードした画像「逃走中.jpg」を同じフォルダ内に保存、もしくは適切なURLに設定してください
+const imageUrl = '逃走中.jpg'; 
+const imageBounds = [[0, 0], [1000, 750]]; // [y(縦幅), x(横幅)] の仮想範囲を規定
+
+// 画像オーバーレイを地図に追加
+L.imageOverlay(imageUrl, imageBounds).addTo(map);
+
+// 初期表示位置を画像の中心に設定
+map.fitBounds(imageBounds);
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+let addMode = false;
+let tempDescription = ""; 
+const markers = {};
+
+function enableAdd(){
+  addMode = true;
+  alert("地図（画像）の上をクリックしてください");
+}
+
+function openDescModal() {
+  document.getElementById("modal-textarea").value = tempDescription;
+  document.getElementById("desc-modal").style.display = "flex";
+  setTimeout(() => { document.getElementById("modal-textarea").focus(); }, 50);
+}
+
+function closeDescModal(isSave) {
+  if (isSave) {
+    tempDescription = document.getElementById("modal-textarea").value.trim();
+    const descBtn = document.getElementById("desc-btn");
+    if (tempDescription) {
+      descBtn.textContent = "説明入力済";
+      descBtn.style.backgroundColor = "#e2e6ea";
+    } else {
+      descBtn.textContent = "説明を追加";
+      descBtn.style.backgroundColor = "#f8f9fa";
+    }
+  }
+  document.getElementById("desc-modal").style.display = "none";
+}
+
+function updateFileLabel() {
+  const fileInput = document.getElementById("image");
+  const fileLabel = document.getElementById("file-label");
+  if (fileInput.files.length > 0) {
+    fileLabel.textContent = "画像選択中";
+    fileLabel.style.backgroundColor = "#e2e6ea";
+  } else {
+    fileLabel.textContent = "画像を選択";
+    fileLabel.style.backgroundColor = "#f8f9fa";
+  }
+}
+
+function resizeImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        const maxWidth = 300;
+        const scale = maxWidth / img.width;
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(base64);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function linkify(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, function(url) {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+}
+
+map.on('click', async function(e) {
+  if (!addMode) return;
+  addMode = false;
+
+  const text = document.getElementById("text").value;
+  const file = document.getElementById("image").files[0];
+  if (!text) { alert("名称を入力してください"); return; }
+
+  let imageData = null;
+  if (file) { imageData = await resizeImage(file); }
+
+  await db.collection("markers").add({
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    text: text,
+    description: tempDescription, 
+    image: imageData,
+    uid: myUserId
+  });
+
+  document.getElementById("text").value = "";
+  document.getElementById("image").value = "";
+  tempDescription = ""; 
+  
+  const descBtn = document.getElementById("desc-btn");
+  descBtn.textContent = "説明を追加";
+  descBtn.style.backgroundColor = "#f8f9fa";
+  updateFileLabel();
+});
+
+db.collection("markers").onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(change => {
+    const data = change.doc.data();
+    const id = change.doc.id;
+
+    if (change.type === "added") {
+      let html = `<div class="custom-popup" id="popup-${id}"><strong>${data.text}</strong>`;
+      
+      if (data.image) { 
+        html += `<img src="${data.image}">`; 
+      }
+      
+      if (data.description) {
+        const linkedText = linkify(data.description);
+        html += `<div class="popup-desc">${linkedText.replace(/\n/g, '<br>')}</div>`;
+      }
+      
+      if (data.uid === myUserId) {
+        html += `<button class="delete-btn" data-id="${id}">削除</button>`;
+      }
+      html += `</div>`;
+
+      const marker = L.marker([data.lat, data.lng]).addTo(map).bindPopup(html);
+      markers[id] = marker;
+    }
+
+    if (change.type === "removed") {
+      if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+    }
+  });
+});
+
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.classList.contains('delete-btn')) {
+    const id = e.target.getAttribute('data-id');
+    const popupDiv = document.getElementById(`popup-${id}`);
+    if (popupDiv) {
+      e.target.outerHTML = `
+        <div class="confirm-box" id="confirm-${id}">
+          <div style="font-size:12px; margin-bottom:4px; color:#d9534f;">本当に削除しますか？</div>
+          <button class="yes-btn" data-id="${id}">はい</button>
+          <button class="no-btn" data-id="${id}">いいえ</button>
+        </div>
+      `;
+    }
+  }
+  
+  if (e.target && e.target.classList.contains('yes-btn')) {
+    const id = e.target.getAttribute('data-id');
+    if (id) { db.collection("markers").doc(id).delete().catch(err => alert("削除権限がありません")); }
+  }
+  
+  if (e.target && e.target.classList.contains('no-btn')) {
+    const id = e.target.getAttribute('data-id');
+    const confirmBox = document.getElementById(`confirm-${id}`);
+    if (confirmBox) { confirmBox.outerHTML = `<button class="delete-btn" data-id="${id}">削除</button>`; }
+  }
+});
+</script>
+</body>
+</html>
