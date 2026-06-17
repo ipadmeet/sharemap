@@ -287,25 +287,38 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // 🗺️ 背景にオリジナル地図（画像）を設定するためのLeaflet初期化
-// CRSをSimpleに設定し、1ピクセル＝1単位の仮想平面座標系に変更します
 const map = L.map('map', {
   zoomControl: false,
   crs: L.CRS.Simple,
-  minZoom: -2,
-  maxZoom: 2
+  minZoom: -3,       // 画面全体が収まるようにズームアウトの下限を少し広げました
+  maxZoom: 3,
+  maxBoundsViscosity: 1.0 // 画像の外側に行き過ぎないように固定
 });
 
-// 画像の読み込みとサイズに合わせた座標設定
-// ※アップロードした画像「逃走中.jpg」を同じフォルダ内に保存、もしくは適切なURLに設定してください
 const imageUrl = '逃走中.PNG'; 
-const imageBounds = [[0, 0], [1000, 750]]; // [y(縦幅), x(横幅)] の仮想範囲を規定
+const img = new Image();
+img.src = imageUrl;
 
-// 画像オーバーレイを地図に追加
-L.imageOverlay(imageUrl, imageBounds).addTo(map);
+// 画像をあらかじめ読み込んで、実際のサイズに合わせてマップを初期化
+img.onload = function() {
+  const w = this.width;
+  const h = this.height;
+  
+  // 画像の実際のサイズを座標系として設定 [y(縦幅), x(横幅)]
+  const imageBounds = [[0, 0], [h, w]]; 
 
-// 初期表示位置を画像の中心に設定
-map.fitBounds(imageBounds);
-L.control.zoom({ position: 'topright' }).addTo(map);
+  // 画像オーバーレイを地図に追加
+  L.imageOverlay(imageUrl, imageBounds).addTo(map);
+
+  // マップが移動できる最大範囲を画像のサイズに制限（全画面からはみ出さない処理）
+  map.setMaxBounds(imageBounds);
+
+  // 最初から全画面にぴったり収まるようにフィットさせる
+  map.fitBounds(imageBounds);
+  
+  // ズームコントロールを配置
+  L.control.zoom({ position: 'topright' }).addTo(map);
+};
 
 let addMode = false;
 let tempDescription = ""; 
